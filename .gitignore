@@ -59,3 +59,7 @@ backend/src/**/*.js
 backend/src/**/*.js.map
 backend/src/**/*.d.ts
 backend/src/**/*.d.ts.map
+backend/*.js
+backend/*.js.map
+backend/*.d.ts
+backend/*.d.ts.map
