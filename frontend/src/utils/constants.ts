@@ -1,5 +1,16 @@
 import type { Option, Question, QuestionType } from "../types/quiz";
 
+export const APP_ROUTES = {
+  HOME: "/",
+  QUIZZES: "/quizzes",
+  CREATE_QUIZ: "/create",
+  QUIZ_DETAILS: "/quizzes/:id",
+} as const;
+
+export function getQuizDetailsRoute(id: string) {
+  return `/quizzes/${id}`;
+}
+
 export const QUESTION_TYPES: { label: string; value: QuestionType }[] = [
   { label: "Boolean", value: "BOOLEAN" },
   { label: "Input", value: "INPUT" },

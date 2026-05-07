@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import { quizzesApi } from "../api/quizzesApi";
 import { QuizForm } from "../components/QuizForm/QuizForm";
 import type { CreateQuizPayload } from "../types/quiz";
+import { getQuizDetailsRoute } from "../utils/constants";
 
 export function CreateQuizPage() {
   const navigate = useNavigate();
@@ -16,7 +18,7 @@ export function CreateQuizPage() {
       setServerError(null);
 
       const createdQuiz = await quizzesApi.createQuiz(payload);
-      navigate(`/quizzes/${createdQuiz.id}`);
+      navigate(getQuizDetailsRoute(createdQuiz.id));
     } catch {
       setServerError("Failed to create quiz. Please check your input and try again.");
     } finally {

@@ -26,9 +26,7 @@ export interface QuizListItem {
   title: string;
   createdAt: string;
   updatedAt: string;
-  _count: {
-    questions: number;
-  };
+  questionCount: number;
 }
 
 export interface CreateQuizPayload {

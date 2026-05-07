@@ -9,7 +9,8 @@ export const quizService = {
         title: data.title,
         questions: {
           create: data.questions.map((question) => {
-            const shouldCreateOptions = question.type !== "INPUT" && question.options.length > 0;
+            const shouldCreateOptions =
+              question.type !== "INPUT" && question.options.length > 0;
 
             return {
               text: question.text,
@@ -19,62 +20,70 @@ export const quizService = {
                     options: {
                       create: question.options.map((option) => ({
                         text: option.text,
-                        isCorrect: option.isCorrect
-                      }))
-                    }
+                        isCorrect: option.isCorrect,
+                      })),
+                    },
                   }
-                : {})
+                : {}),
             };
-          })
-        }
+          }),
+        },
       },
       include: {
         questions: {
           include: {
-            options: true
+            options: true,
           },
           orderBy: {
-            createdAt: "asc"
-          }
-        }
-      }
+            createdAt: "asc",
+          },
+        },
+      },
     });
   },
 
   async getAllQuizzes() {
-    return prisma.quiz.findMany({
+    const quizzes = await prisma.quiz.findMany({
       select: {
         id: true,
         title: true,
         createdAt: true,
         updatedAt: true,
-        _count: {
+        questions: {
           select: {
-            questions: true
-          }
-        }
+            id: true,
+          },
+        },
       },
       orderBy: {
-        createdAt: "desc"
-      }
+        createdAt: "desc",
+      },
     });
+
+    return quizzes.map((quiz) => ({
+      id: quiz.id,
+      title: quiz.title,
+      createdAt: quiz.createdAt,
+      updatedAt: quiz.updatedAt,
+      questionCount: quiz.questions.length,
+    }));
   },
 
   async getQuizById(id: string) {
     return prisma.quiz.findUnique({
       where: {
-        id
+        id,
       },
       include: {
         questions: {
           include: {
-            options: true
+            options: true,
           },
           orderBy: {
-            createdAt: "asc"
-          }
-        }
-      }
+            createdAt: "asc",
+          },
+        },
+      },
     });
   },
 
@@ -82,15 +91,18 @@ export const quizService = {
     try {
       return await prisma.quiz.delete({
         where: {
-          id
-        }
+          id,
+        },
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2025"
+      ) {
         return null;
       }
 
       throw error;
     }
-  }
+  },
 };

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { QuizListItem } from "../../types/quiz";
+import { getQuizDetailsRoute } from "../../utils/constants";
 
 interface QuizCardProps {
   quiz: QuizListItem;
@@ -13,12 +14,12 @@ export function QuizCard({ quiz, onDelete, isDeleting = false }: QuizCardProps) 
       <div>
         <h3 className="quiz-card-title">{quiz.title}</h3>
         <p className="quiz-card-meta">
-          {quiz._count.questions} {quiz._count.questions === 1 ? "question" : "questions"}
+          {quiz.questionCount} {quiz.questionCount === 1 ? "question" : "questions"}
         </p>
       </div>
 
       <div className="quiz-card-actions">
-        <Link to={`/quizzes/${quiz.id}`} className="button secondary">
+        <Link to={getQuizDetailsRoute(quiz.id)} className="button secondary">
           View
         </Link>
 

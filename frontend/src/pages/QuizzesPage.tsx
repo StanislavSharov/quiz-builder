@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+
 import { quizzesApi } from "../api/quizzesApi";
 import { QuizCard } from "../components/QuizCard/QuizCard";
 import type { QuizListItem } from "../types/quiz";
+import { APP_ROUTES } from "../utils/constants";
 
 export function QuizzesPage() {
   const [quizzes, setQuizzes] = useState<QuizListItem[]>([]);
@@ -43,7 +45,7 @@ export function QuizzesPage() {
   }
 
   useEffect(() => {
-    void loadQuizzes();
+    loadQuizzes();
   }, []);
 
   if (isLoading) {
@@ -58,7 +60,7 @@ export function QuizzesPage() {
           <p className="page-description">View, open, and delete created quizzes.</p>
         </div>
 
-        <Link to="/create" className="button primary">
+        <Link to={APP_ROUTES.CREATE_QUIZ} className="button primary">
           Create quiz
         </Link>
       </div>
@@ -69,7 +71,8 @@ export function QuizzesPage() {
         <div className="empty-state">
           <h2>No quizzes yet</h2>
           <p>Create your first quiz to see it here.</p>
-          <Link to="/create" className="button primary">
+
+          <Link to={APP_ROUTES.CREATE_QUIZ} className="button primary">
             Create quiz
           </Link>
         </div>

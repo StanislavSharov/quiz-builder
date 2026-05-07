@@ -1,10 +1,10 @@
 import axios from "axios";
 import type { CreateQuizPayload, Quiz, QuizListItem } from "../types/quiz";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+import { API_BASE_URL } from "../config";
 
 const apiClient = axios.create({
-  baseURL: API_URL,
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },

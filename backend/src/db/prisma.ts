@@ -2,14 +2,14 @@ import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-const connectionString = process.env.DATABASE_URL;
+const connectionString = process.env.POSTGRES_DATABASE_URL;
 
 if (!connectionString) {
-  throw new Error("DATABASE_URL is not defined in environment variables.");
+  throw new Error("POSTGRES_DATABASE_URL is not defined in environment variables.");
 }
 
 const adapter = new PrismaPg({
-  connectionString
+  connectionString,
 });
 
 export const prisma = new PrismaClient({
@@ -17,5 +17,5 @@ export const prisma = new PrismaClient({
   log:
     process.env.NODE_ENV === "production"
       ? ["error"]
-      : ["query", "info", "warn", "error"]
+      : ["query", "info", "warn", "error"],
 });

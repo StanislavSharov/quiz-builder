@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+
 import { quizzesApi } from "../api/quizzesApi";
 import type { Quiz } from "../types/quiz";
+import { APP_ROUTES } from "../utils/constants";
 
 export function QuizDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -11,27 +13,45 @@ export function QuizDetailsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function loadQuiz() {
       if (!id) {
-        setError("Quiz id is missing.");
-        setIsLoading(false);
+        if (isMounted) {
+          setError("Quiz id is missing.");
+          setIsLoading(false);
+        }
+
         return;
       }
 
       try {
-        setIsLoading(true);
-        setError(null);
+        if (isMounted) {
+          setIsLoading(true);
+          setError(null);
+        }
 
         const data = await quizzesApi.getQuizById(id);
-        setQuiz(data);
+
+        if (isMounted) {
+          setQuiz(data);
+        }
       } catch {
-        setError("Failed to load quiz details.");
+        if (isMounted) {
+          setError("Failed to load quiz details.");
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     }
 
-    void loadQuiz();
+    loadQuiz();
+
+    return () => {
+      isMounted = false;
+    };
   }, [id]);
 
   if (isLoading) {
@@ -42,7 +62,8 @@ export function QuizDetailsPage() {
     return (
       <section className="page">
         <p className="error-message">{error}</p>
-        <Link to="/quizzes" className="button secondary">
+
+        <Link to={APP_ROUTES.QUIZZES} className="button secondary">
           Back to quizzes
         </Link>
       </section>
@@ -53,7 +74,8 @@ export function QuizDetailsPage() {
     return (
       <section className="page">
         <p className="state-message">Quiz not found.</p>
-        <Link to="/quizzes" className="button secondary">
+
+        <Link to={APP_ROUTES.QUIZZES} className="button secondary">
           Back to quizzes
         </Link>
       </section>
@@ -70,7 +92,7 @@ export function QuizDetailsPage() {
           </p>
         </div>
 
-        <Link to="/quizzes" className="button secondary">
+        <Link to={APP_ROUTES.QUIZZES} className="button secondary">
           Back
         </Link>
       </div>
@@ -82,6 +104,7 @@ export function QuizDetailsPage() {
               <h3>
                 {index + 1}. {question.text}
               </h3>
+
               <span className="badge">{question.type}</span>
             </div>
 
@@ -89,10 +112,13 @@ export function QuizDetailsPage() {
               <p className="hint">Short text answer question.</p>
             ) : (
               <ul className="options-list">
-                {question.options.map((option) => (
-                  <li key={option.id ?? option.text}>
+                {question.options.map((option, optionIndex) => (
+                  <li key={option.id ?? `${option.text}-${optionIndex}`}>
                     <span>{option.text}</span>
-                    {option.isCorrect && <span className="correct-label">Correct</span>}
+
+                    {option.isCorrect && (
+                      <span className="correct-label">Correct answer</span>
+                    )}
                   </li>
                 ))}
               </ul>
