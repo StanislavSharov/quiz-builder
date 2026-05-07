@@ -1,67 +1,43 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 
 import { quizzesApi } from "../api/quizzesApi";
-import type { Quiz } from "../types/quiz";
+import { queryKeys } from "../api/queryKeys";
 import { APP_ROUTES } from "../utils/constants";
 
 export function QuizDetailsPage() {
   const { id } = useParams<{ id: string }>();
 
-  const [quiz, setQuiz] = useState<Quiz | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: quiz,
+    isPending,
+    isError,
+  } = useQuery({
+    queryKey: queryKeys.quiz(id ?? ""),
+    queryFn: () => quizzesApi.getQuizById(id as string),
+    enabled: Boolean(id),
+  });
 
-  useEffect(() => {
-    let isMounted = true;
+  if (!id) {
+    return (
+      <section className="page">
+        <p className="error-message">Quiz id is missing.</p>
 
-    async function loadQuiz() {
-      if (!id) {
-        if (isMounted) {
-          setError("Quiz id is missing.");
-          setIsLoading(false);
-        }
+        <Link to={APP_ROUTES.QUIZZES} className="button secondary">
+          Back to quizzes
+        </Link>
+      </section>
+    );
+  }
 
-        return;
-      }
-
-      try {
-        if (isMounted) {
-          setIsLoading(true);
-          setError(null);
-        }
-
-        const data = await quizzesApi.getQuizById(id);
-
-        if (isMounted) {
-          setQuiz(data);
-        }
-      } catch {
-        if (isMounted) {
-          setError("Failed to load quiz details.");
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    loadQuiz();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [id]);
-
-  if (isLoading) {
+  if (isPending) {
     return <p className="state-message">Loading quiz...</p>;
   }
 
-  if (error) {
+  if (isError) {
     return (
       <section className="page">
-        <p className="error-message">{error}</p>
+        <p className="error-message">Failed to load quiz details.</p>
 
         <Link to={APP_ROUTES.QUIZZES} className="button secondary">
           Back to quizzes

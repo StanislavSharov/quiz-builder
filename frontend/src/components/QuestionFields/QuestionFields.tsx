@@ -1,4 +1,13 @@
-import type { Option, Question, QuestionType } from "../../types/quiz";
+import {
+  useFieldArray,
+  type Control,
+  type FieldErrors,
+  type UseFormRegister,
+  type UseFormSetValue,
+  type UseFormWatch,
+} from "react-hook-form";
+
+import type { CreateQuizPayload, Option, QuestionType } from "../../types/quiz";
 import {
   DEFAULT_BOOLEAN_OPTIONS,
   QUESTION_TYPES,
@@ -6,70 +15,72 @@ import {
 } from "../../utils/constants";
 
 interface QuestionFieldsProps {
-  question: Question;
   index: number;
-  onChange: (index: number, question: Question) => void;
+  control: Control<CreateQuizPayload>;
+  register: UseFormRegister<CreateQuizPayload>;
+  setValue: UseFormSetValue<CreateQuizPayload>;
+  watch: UseFormWatch<CreateQuizPayload>;
+  errors: FieldErrors<CreateQuizPayload>;
   onRemove: (index: number) => void;
   canRemove: boolean;
 }
 
+function cloneOptions(options: Option[]) {
+  return options.map((option) => ({
+    text: option.text,
+    isCorrect: option.isCorrect,
+  }));
+}
+
 export function QuestionFields({
-  question,
   index,
-  onChange,
+  control,
+  register,
+  setValue,
+  watch,
+  errors,
   onRemove,
   canRemove,
 }: QuestionFieldsProps) {
-  function updateQuestion(partial: Partial<Question>) {
-    onChange(index, {
-      ...question,
-      ...partial,
-    });
-  }
+  const {
+    fields: optionFields,
+    append: appendOption,
+    remove: removeOption,
+    replace: replaceOptions,
+  } = useFieldArray({
+    control,
+    name: `questions.${index}.options`,
+  });
+
+  const questionType = watch(`questions.${index}.type`);
+  const questionOptions = watch(`questions.${index}.options`) ?? [];
 
   function handleTypeChange(type: QuestionType) {
+    setValue(`questions.${index}.type`, type, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+
     if (type === "BOOLEAN") {
-      updateQuestion({
-        type,
-        options: DEFAULT_BOOLEAN_OPTIONS,
-      });
+      replaceOptions(cloneOptions(DEFAULT_BOOLEAN_OPTIONS));
       return;
     }
 
     if (type === "CHECKBOX") {
-      updateQuestion({
-        type,
-        options: createDefaultCheckboxOptions(),
-      });
+      replaceOptions(cloneOptions(createDefaultCheckboxOptions()));
       return;
     }
 
-    updateQuestion({
-      type,
-      options: [],
-    });
+    replaceOptions([]);
   }
 
-  function updateOption(optionIndex: number, partial: Partial<Option>) {
-    const updatedOptions = question.options.map((option, currentIndex) =>
-      currentIndex === optionIndex ? { ...option, ...partial } : option
-    );
+  function handleBooleanCorrectChange(optionIndex: number) {
+    const updatedOptions = questionOptions.map((option, currentIndex) => ({
+      text: option.text,
+      isCorrect: currentIndex === optionIndex,
+    }));
 
-    updateQuestion({
-      options: updatedOptions,
-    });
-  }
-
-  function addOption() {
-    updateQuestion({
-      options: [...question.options, { text: "", isCorrect: false }],
-    });
-  }
-
-  function removeOption(optionIndex: number) {
-    updateQuestion({
-      options: question.options.filter((_, currentIndex) => currentIndex !== optionIndex),
-    });
+    replaceOptions(updatedOptions);
   }
 
   return (
@@ -90,16 +101,21 @@ export function QuestionFields({
       <label className="field">
         <span>Question text</span>
         <input
-          value={question.text}
-          onChange={(event) => updateQuestion({ text: event.target.value })}
+          {...register(`questions.${index}.text`, {
+            required: `Question ${index + 1} text is required.`,
+          })}
           placeholder="Enter question text"
         />
       </label>
 
+      {errors.questions?.[index]?.text?.message && (
+        <p className="error-message">{errors.questions[index]?.text?.message}</p>
+      )}
+
       <label className="field">
         <span>Question type</span>
         <select
-          value={question.type}
+          value={questionType}
           onChange={(event) => handleTypeChange(event.target.value as QuestionType)}
         >
           {QUESTION_TYPES.map((type) => (
@@ -110,33 +126,27 @@ export function QuestionFields({
         </select>
       </label>
 
-      {question.type === "INPUT" && (
+      {questionType === "INPUT" && (
         <p className="hint">
           Input questions do not require predefined options. The answer will be entered as short
           text.
         </p>
       )}
 
-      {question.type === "BOOLEAN" && (
+      {questionType === "BOOLEAN" && (
         <div className="options-block">
           <p className="section-label">Boolean options</p>
 
-          {question.options.map((option, optionIndex) => (
-            <div key={optionIndex} className="option-row readonly-option">
-              <input value={option.text} disabled />
+          {optionFields.map((option, optionIndex) => (
+            <div key={option.id} className="option-row readonly-option">
+              <input value={questionOptions[optionIndex]?.text ?? ""} disabled />
+
               <label className="checkbox-label">
                 <input
                   type="radio"
                   name={`boolean-correct-${index}`}
-                  checked={option.isCorrect}
-                  onChange={() => {
-                    const updatedOptions = question.options.map((currentOption, currentIndex) => ({
-                      ...currentOption,
-                      isCorrect: currentIndex === optionIndex,
-                    }));
-
-                    updateQuestion({ options: updatedOptions });
-                  }}
+                  checked={Boolean(questionOptions[optionIndex]?.isCorrect)}
+                  onChange={() => handleBooleanCorrectChange(optionIndex)}
                 />
                 Correct
               </label>
@@ -145,31 +155,33 @@ export function QuestionFields({
         </div>
       )}
 
-      {question.type === "CHECKBOX" && (
+      {questionType === "CHECKBOX" && (
         <div className="options-block">
           <div className="options-header">
             <p className="section-label">Checkbox options</p>
 
-            <button type="button" className="button secondary" onClick={addOption}>
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => appendOption({ text: "", isCorrect: false })}
+            >
               Add option
             </button>
           </div>
 
-          {question.options.map((option, optionIndex) => (
-            <div key={optionIndex} className="option-row">
+          {optionFields.map((option, optionIndex) => (
+            <div key={option.id} className="option-row">
               <input
-                value={option.text}
-                onChange={(event) => updateOption(optionIndex, { text: event.target.value })}
+                {...register(`questions.${index}.options.${optionIndex}.text`, {
+                  required: "Option text is required.",
+                })}
                 placeholder={`Option ${optionIndex + 1}`}
               />
 
               <label className="checkbox-label">
                 <input
                   type="checkbox"
-                  checked={option.isCorrect}
-                  onChange={(event) =>
-                    updateOption(optionIndex, { isCorrect: event.target.checked })
-                  }
+                  {...register(`questions.${index}.options.${optionIndex}.isCorrect`)}
                 />
                 Correct
               </label>
@@ -178,7 +190,7 @@ export function QuestionFields({
                 type="button"
                 className="button ghost danger-text"
                 onClick={() => removeOption(optionIndex)}
-                disabled={question.options.length <= 2}
+                disabled={optionFields.length <= 2}
               >
                 Remove
               </button>

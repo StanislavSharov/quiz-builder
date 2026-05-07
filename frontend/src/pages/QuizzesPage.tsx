@@ -1,54 +1,44 @@
-import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { quizzesApi } from "../api/quizzesApi";
+import { queryKeys } from "../api/queryKeys";
 import { QuizCard } from "../components/QuizCard/QuizCard";
 import type { QuizListItem } from "../types/quiz";
 import { APP_ROUTES } from "../utils/constants";
 
 export function QuizzesPage() {
-  const [quizzes, setQuizzes] = useState<QuizListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  async function loadQuizzes() {
-    try {
-      setIsLoading(true);
-      setError(null);
+  const {
+    data: quizzes = [],
+    isPending,
+    isError,
+  } = useQuery({
+    queryKey: queryKeys.quizzes,
+    queryFn: quizzesApi.getQuizzes,
+  });
 
-      const data = await quizzesApi.getQuizzes();
-      setQuizzes(data);
-    } catch {
-      setError("Failed to load quizzes. Please check if the backend server is running.");
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  const deleteQuizMutation = useMutation({
+    mutationFn: quizzesApi.deleteQuiz,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.quizzes,
+      });
+    },
+  });
 
-  async function handleDelete(id: string) {
+  function handleDelete(id: string) {
     const confirmed = window.confirm("Are you sure you want to delete this quiz?");
 
     if (!confirmed) {
       return;
     }
 
-    try {
-      setDeletingId(id);
-      await quizzesApi.deleteQuiz(id);
-      setQuizzes((currentQuizzes) => currentQuizzes.filter((quiz) => quiz.id !== id));
-    } catch {
-      setError("Failed to delete quiz.");
-    } finally {
-      setDeletingId(null);
-    }
+    deleteQuizMutation.mutate(id);
   }
 
-  useEffect(() => {
-    loadQuizzes();
-  }, []);
-
-  if (isLoading) {
+  if (isPending) {
     return <p className="state-message">Loading quizzes...</p>;
   }
 
@@ -65,7 +55,15 @@ export function QuizzesPage() {
         </Link>
       </div>
 
-      {error && <p className="error-message">{error}</p>}
+      {isError && (
+        <p className="error-message">
+          Failed to load quizzes. Please check if the backend server is running.
+        </p>
+      )}
+
+      {deleteQuizMutation.isError && (
+        <p className="error-message">Failed to delete quiz.</p>
+      )}
 
       {quizzes.length === 0 ? (
         <div className="empty-state">
@@ -78,12 +76,14 @@ export function QuizzesPage() {
         </div>
       ) : (
         <div className="quiz-grid">
-          {quizzes.map((quiz) => (
+          {quizzes.map((quiz: QuizListItem) => (
             <QuizCard
               key={quiz.id}
               quiz={quiz}
               onDelete={handleDelete}
-              isDeleting={deletingId === quiz.id}
+              isDeleting={
+                deleteQuizMutation.isPending && deleteQuizMutation.variables === quiz.id
+              }
             />
           ))}
         </div>

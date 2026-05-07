@@ -1,29 +1,29 @@
-import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 
 import { quizzesApi } from "../api/quizzesApi";
+import { queryKeys } from "../api/queryKeys";
 import { QuizForm } from "../components/QuizForm/QuizForm";
 import type { CreateQuizPayload } from "../types/quiz";
 import { getQuizDetailsRoute } from "../utils/constants";
 
 export function CreateQuizPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
+  const createQuizMutation = useMutation({
+    mutationFn: quizzesApi.createQuiz,
+    onSuccess: async (createdQuiz) => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.quizzes,
+      });
+
+      navigate(getQuizDetailsRoute(createdQuiz.id));
+    },
+  });
 
   async function handleCreateQuiz(payload: CreateQuizPayload) {
-    try {
-      setIsSubmitting(true);
-      setServerError(null);
-
-      const createdQuiz = await quizzesApi.createQuiz(payload);
-      navigate(getQuizDetailsRoute(createdQuiz.id));
-    } catch {
-      setServerError("Failed to create quiz. Please check your input and try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    await createQuizMutation.mutateAsync(payload);
   }
 
   return (
@@ -37,9 +37,16 @@ export function CreateQuizPage() {
         </div>
       </div>
 
-      {serverError && <p className="error-message">{serverError}</p>}
+      {createQuizMutation.isError && (
+        <p className="error-message">
+          Failed to create quiz. Please check your input and try again.
+        </p>
+      )}
 
-      <QuizForm onSubmit={handleCreateQuiz} isSubmitting={isSubmitting} />
+      <QuizForm
+        onSubmit={handleCreateQuiz}
+        isSubmitting={createQuizMutation.isPending}
+      />
     </section>
   );
 }

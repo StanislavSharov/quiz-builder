@@ -1,5 +1,6 @@
-import { useState } from "react";
-import type { CreateQuizPayload, Question } from "../../types/quiz";
+import { useForm, useFieldArray } from "react-hook-form";
+
+import type { CreateQuizPayload } from "../../types/quiz";
 import { createDefaultQuestion } from "../../utils/constants";
 import { QuestionFields } from "../QuestionFields/QuestionFields";
 
@@ -8,43 +9,43 @@ interface QuizFormProps {
   isSubmitting?: boolean;
 }
 
-interface FormError {
-  message: string;
-}
-
 export function QuizForm({ onSubmit, isSubmitting = false }: QuizFormProps) {
-  const [title, setTitle] = useState("");
-  const [questions, setQuestions] = useState<Question[]>([createDefaultQuestion()]);
-  const [error, setError] = useState<FormError | null>(null);
+  const {
+    register,
+    control,
+    handleSubmit,
+    setValue,
+    watch,
+    setError,
+    clearErrors,
+    formState: { errors },
+  } = useForm<CreateQuizPayload>({
+    defaultValues: {
+      title: "",
+      questions: [createDefaultQuestion()],
+    },
+    mode: "onSubmit",
+  });
 
-  function updateQuestion(index: number, updatedQuestion: Question) {
-    setQuestions((currentQuestions) =>
-      currentQuestions.map((question, currentIndex) =>
-        currentIndex === index ? updatedQuestion : question
-      )
-    );
-  }
+  const {
+    fields: questionFields,
+    append: appendQuestion,
+    remove: removeQuestion,
+  } = useFieldArray({
+    control,
+    name: "questions",
+  });
 
-  function addQuestion() {
-    setQuestions((currentQuestions) => [...currentQuestions, createDefaultQuestion()]);
-  }
-
-  function removeQuestion(index: number) {
-    setQuestions((currentQuestions) =>
-      currentQuestions.filter((_, currentIndex) => currentIndex !== index)
-    );
-  }
-
-  function validateForm(): string | null {
-    if (!title.trim()) {
+  function validateQuizPayload(payload: CreateQuizPayload): string | null {
+    if (!payload.title.trim()) {
       return "Quiz title is required.";
     }
 
-    if (questions.length === 0) {
+    if (payload.questions.length === 0) {
       return "At least one question is required.";
     }
 
-    for (const [index, question] of questions.entries()) {
+    for (const [index, question] of payload.questions.entries()) {
       if (!question.text.trim()) {
         return `Question ${index + 1} text is required.`;
       }
@@ -77,21 +78,12 @@ export function QuizForm({ onSubmit, isSubmitting = false }: QuizFormProps) {
     return null;
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const validationError = validateForm();
-
-    if (validationError) {
-      setError({ message: validationError });
-      return;
-    }
-
-    setError(null);
+  async function submitForm(values: CreateQuizPayload) {
+    clearErrors("root");
 
     const payload: CreateQuizPayload = {
-      title: title.trim(),
-      questions: questions.map((question) => ({
+      title: values.title.trim(),
+      questions: values.questions.map((question) => ({
         text: question.text.trim(),
         type: question.type,
         options:
@@ -104,37 +96,62 @@ export function QuizForm({ onSubmit, isSubmitting = false }: QuizFormProps) {
       })),
     };
 
+    const validationError = validateQuizPayload(payload);
+
+    if (validationError) {
+      setError("root", {
+        type: "manual",
+        message: validationError,
+      });
+
+      return;
+    }
+
     await onSubmit(payload);
   }
 
   return (
-    <form className="quiz-form" onSubmit={handleSubmit}>
+    <form className="quiz-form" onSubmit={handleSubmit(submitForm)}>
       <label className="field">
         <span>Quiz title</span>
         <input
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
+          {...register("title", {
+            required: "Quiz title is required.",
+          })}
           placeholder="Example: JavaScript Basics"
         />
       </label>
 
+      {errors.title?.message && (
+        <p className="error-message">{errors.title.message}</p>
+      )}
+
       <div className="questions-list">
-        {questions.map((question, index) => (
+        {questionFields.map((question, index) => (
           <QuestionFields
-            key={index}
-            question={question}
+            key={question.id}
             index={index}
-            onChange={updateQuestion}
+            control={control}
+            register={register}
+            setValue={setValue}
+            watch={watch}
+            errors={errors}
             onRemove={removeQuestion}
-            canRemove={questions.length > 1}
+            canRemove={questionFields.length > 1}
           />
         ))}
       </div>
 
-      {error && <p className="error-message">{error.message}</p>}
+      {errors.root?.message && (
+        <p className="error-message">{errors.root.message}</p>
+      )}
 
       <div className="form-actions">
-        <button type="button" className="button secondary" onClick={addQuestion}>
+        <button
+          type="button"
+          className="button secondary"
+          onClick={() => appendQuestion(createDefaultQuestion())}
+        >
           Add question
         </button>
 
