@@ -1,4 +1,4 @@
-import { useForm, useFieldArray } from "react-hook-form";
+import { FormProvider, useFieldArray, useForm } from "react-hook-form";
 
 import type { CreateQuizPayload } from "../../types/quiz";
 import { createDefaultQuestion } from "../../utils/constants";
@@ -10,22 +10,22 @@ interface QuizFormProps {
 }
 
 export function QuizForm({ onSubmit, isSubmitting = false }: QuizFormProps) {
-  const {
-    register,
-    control,
-    handleSubmit,
-    setValue,
-    watch,
-    setError,
-    clearErrors,
-    formState: { errors },
-  } = useForm<CreateQuizPayload>({
+  const methods = useForm<CreateQuizPayload>({
     defaultValues: {
       title: "",
       questions: [createDefaultQuestion()],
     },
     mode: "onSubmit",
   });
+
+  const {
+    control,
+    register,
+    handleSubmit,
+    setError,
+    clearErrors,
+    formState: { errors },
+  } = methods;
 
   const {
     fields: questionFields,
@@ -111,54 +111,55 @@ export function QuizForm({ onSubmit, isSubmitting = false }: QuizFormProps) {
   }
 
   return (
-    <form className="quiz-form" onSubmit={handleSubmit(submitForm)}>
-      <label className="field">
-        <span>Quiz title</span>
-        <input
-          {...register("title", {
-            required: "Quiz title is required.",
-          })}
-          placeholder="Example: JavaScript Basics"
-        />
-      </label>
-
-      {errors.title?.message && (
-        <p className="error-message">{errors.title.message}</p>
-      )}
-
-      <div className="questions-list">
-        {questionFields.map((question, index) => (
-          <QuestionFields
-            key={question.id}
-            index={index}
-            control={control}
-            register={register}
-            setValue={setValue}
-            watch={watch}
-            errors={errors}
-            onRemove={removeQuestion}
-            canRemove={questionFields.length > 1}
+    <FormProvider {...methods}>
+      <form className="quiz-form" onSubmit={handleSubmit(submitForm)}>
+        <label className="field">
+          <span>Quiz title</span>
+          <input
+            {...register("title", {
+              required: "Quiz title is required.",
+            })}
+            placeholder="Example: JavaScript Basics"
           />
-        ))}
-      </div>
+        </label>
 
-      {errors.root?.message && (
-        <p className="error-message">{errors.root.message}</p>
-      )}
+        {errors.title?.message && (
+          <p className="error-message">{errors.title.message}</p>
+        )}
 
-      <div className="form-actions">
-        <button
-          type="button"
-          className="button secondary"
-          onClick={() => appendQuestion(createDefaultQuestion())}
-        >
-          Add question
-        </button>
+        <div className="questions-list">
+          {questionFields.map((question, index) => (
+            <QuestionFields
+              key={question.id}
+              index={index}
+              onRemove={removeQuestion}
+              canRemove={questionFields.length > 1}
+            />
+          ))}
+        </div>
 
-        <button type="submit" className="button primary" disabled={isSubmitting}>
-          {isSubmitting ? "Creating..." : "Create quiz"}
-        </button>
-      </div>
-    </form>
+        {errors.root?.message && (
+          <p className="error-message">{errors.root.message}</p>
+        )}
+
+        <div className="form-actions">
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => appendQuestion(createDefaultQuestion())}
+          >
+            Add question
+          </button>
+
+          <button
+            type="submit"
+            className="button primary"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Creating..." : "Create quiz"}
+          </button>
+        </div>
+      </form>
+    </FormProvider>
   );
 }

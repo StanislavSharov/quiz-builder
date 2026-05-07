@@ -1,10 +1,12 @@
 import { Prisma } from "@prisma/client";
+
 import { prisma } from "../db/prisma.js";
+import { Quiz } from "../domain/quiz.domain.js";
 import type { CreateQuizInput } from "../types/quiz.types.js";
 
 export const quizService = {
   async createQuiz(data: CreateQuizInput) {
-    return prisma.quiz.create({
+    const createdQuiz = await prisma.quiz.create({
       data: {
         title: data.title,
         questions: {
@@ -40,6 +42,8 @@ export const quizService = {
         },
       },
     });
+
+    return Quiz.toDomainModel(createdQuiz);
   },
 
   async getAllQuizzes() {
@@ -60,17 +64,11 @@ export const quizService = {
       },
     });
 
-    return quizzes.map((quiz) => ({
-      id: quiz.id,
-      title: quiz.title,
-      createdAt: quiz.createdAt,
-      updatedAt: quiz.updatedAt,
-      questionCount: quiz.questions.length,
-    }));
+    return quizzes.map(Quiz.toListItemDomainModel);
   },
 
   async getQuizById(id: string) {
-    return prisma.quiz.findUnique({
+    const quiz = await prisma.quiz.findUnique({
       where: {
         id,
       },
@@ -85,15 +83,30 @@ export const quizService = {
         },
       },
     });
+
+    if (!quiz) {
+      return null;
+    }
+
+    return Quiz.toDomainModel(quiz);
   },
 
   async deleteQuiz(id: string) {
     try {
-      return await prisma.quiz.delete({
+      const deletedQuiz = await prisma.quiz.delete({
         where: {
           id,
         },
+        include: {
+          questions: {
+            include: {
+              options: true,
+            },
+          },
+        },
       });
+
+      return Quiz.toDomainModel(deletedQuiz);
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&

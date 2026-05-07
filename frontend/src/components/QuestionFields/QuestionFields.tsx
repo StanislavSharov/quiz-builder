@@ -1,11 +1,4 @@
-import {
-  useFieldArray,
-  type Control,
-  type FieldErrors,
-  type UseFormRegister,
-  type UseFormSetValue,
-  type UseFormWatch,
-} from "react-hook-form";
+import { useFieldArray, useFormContext } from "react-hook-form";
 
 import type { CreateQuizPayload, Option, QuestionType } from "../../types/quiz";
 import {
@@ -16,11 +9,6 @@ import {
 
 interface QuestionFieldsProps {
   index: number;
-  control: Control<CreateQuizPayload>;
-  register: UseFormRegister<CreateQuizPayload>;
-  setValue: UseFormSetValue<CreateQuizPayload>;
-  watch: UseFormWatch<CreateQuizPayload>;
-  errors: FieldErrors<CreateQuizPayload>;
   onRemove: (index: number) => void;
   canRemove: boolean;
 }
@@ -34,14 +22,19 @@ function cloneOptions(options: Option[]) {
 
 export function QuestionFields({
   index,
-  control,
-  register,
-  setValue,
-  watch,
-  errors,
   onRemove,
   canRemove,
 }: QuestionFieldsProps) {
+  const {
+    control,
+    register,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useFormContext<CreateQuizPayload>();
+
+  const fieldArrayName = `questions.${index}.options` as const;
+
   const {
     fields: optionFields,
     append: appendOption,
@@ -49,7 +42,7 @@ export function QuestionFields({
     replace: replaceOptions,
   } = useFieldArray({
     control,
-    name: `questions.${index}.options`,
+    name: fieldArrayName,
   });
 
   const questionType = watch(`questions.${index}.type`);
@@ -109,14 +102,18 @@ export function QuestionFields({
       </label>
 
       {errors.questions?.[index]?.text?.message && (
-        <p className="error-message">{errors.questions[index]?.text?.message}</p>
+        <p className="error-message">
+          {errors.questions[index]?.text?.message}
+        </p>
       )}
 
       <label className="field">
         <span>Question type</span>
         <select
           value={questionType}
-          onChange={(event) => handleTypeChange(event.target.value as QuestionType)}
+          onChange={(event) =>
+            handleTypeChange(event.target.value as QuestionType)
+          }
         >
           {QUESTION_TYPES.map((type) => (
             <option key={type.value} value={type.value}>
@@ -128,8 +125,8 @@ export function QuestionFields({
 
       {questionType === "INPUT" && (
         <p className="hint">
-          Input questions do not require predefined options. The answer will be entered as short
-          text.
+          Input questions do not require predefined options. The answer will be
+          entered as short text.
         </p>
       )}
 
@@ -139,7 +136,10 @@ export function QuestionFields({
 
           {optionFields.map((option, optionIndex) => (
             <div key={option.id} className="option-row readonly-option">
-              <input value={questionOptions[optionIndex]?.text ?? ""} disabled />
+              <input
+                value={questionOptions[optionIndex]?.text ?? ""}
+                disabled
+              />
 
               <label className="checkbox-label">
                 <input
@@ -181,7 +181,9 @@ export function QuestionFields({
               <label className="checkbox-label">
                 <input
                   type="checkbox"
-                  {...register(`questions.${index}.options.${optionIndex}.isCorrect`)}
+                  {...register(
+                    `questions.${index}.options.${optionIndex}.isCorrect`,
+                  )}
                 />
                 Correct
               </label>
